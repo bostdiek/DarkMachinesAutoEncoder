@@ -1,0 +1,6 @@
+data/external/
+data/interim/
+data/processed/
+data/raw/
+.ipynb_checkpoints/
+.DS_Storeq
