@@ -3,4 +3,8 @@ data/interim/
 data/processed/
 data/raw/
 .ipynb_checkpoints/
-.DS_Storeq
+.DS_Store
+model/logs/
+src/models/runs/
+src/scripts/logs/
+__pycache__/
