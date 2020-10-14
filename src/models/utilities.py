@@ -6,15 +6,17 @@ from torch.utils.data import Dataset
 
 
 class TrainingDataset(Dataset):
-    def __init__(self, npz_file, types=False):
+    def __init__(self, npz_file, types=False, init_frac=0, final_frac=1):
         """
         Args:
             npz_file (string): Path to data.
         """
         with np.load(npz_file) as f:
-            self.data = f['Objects']
+            len_f = f['Objects'].shape[0]
+            start_i, end_i = int(init_frac * len_f), int(final_frac * len_f)
+            self.data = f['Objects'][start_i:end_i]
             if types:
-                self.types = f['Procs']
+                self.types = f['Procs'][start_i:end_i]
             else:
                 self.types = None
 
