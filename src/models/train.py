@@ -82,7 +82,19 @@ def main():
     parser.add_argument(
         "--show_number", type=int, default=5000, help="Plot generated samples in Tensorboard"
     )
+    parser.add_argument(
+        '--reduce_lr_patience', type=int, default=2, help='How many epochs of stalled validation loss before lowering learning rate'
+    )
+    parser.add_argument(
+        '--stop_patience', type=int, default=4, help='How many epochs of stalled validation loss before early stopping'
+    )
     # model params
+    parser.add_argument(
+        "--vae", action="store_true", help="Use a beta variational auto encoder, otherwise use vanilla auto encoder"
+    )
+    parser.add_argument(
+        '--beta', type=float, default=0.5, help='The loss is: (1-beta)*ReconLoss + beta*KLD'
+    )
     parser.add_argument(
         '--latent_size', type=int, default=32, help='Dimensionality of latent space'
     )
@@ -125,9 +137,14 @@ def main():
         subprocess.call(f'rsync -v --progress {ffile} /scratch/background_chan1_7.79.npz',
                         shell=True
                         )
-        Background = TrainingDataset('/scratch/background_chan1_7.79.npz')
+        Background = TrainingDataset('/scratch/background_chan1_7.79.npz',
+                                     init_frac=0,
+                                     final_frac=0.8)
         if not args.train_only:
-            Background_eval = TrainingDataset('/scratch/background_chan1_7.79.npz', types=True)
+            Background_eval = TrainingDataset('/scratch/background_chan1_7.79.npz',
+                                              types=True,
+                                              init_frac=0.8,
+                                              final_frac=0.9)
     elif args.dataset == 'chan2a':
         print(f'Experiment on {args.dataset}')
         Background = TrainingDataset(ddir +  'interim/chan2a/background_chan2a_309.6.npz')
@@ -140,7 +157,11 @@ def main():
     else:
         sys.exit('Bad dataset')
 
-    run_name = f'{args.dataset}/{args.time}-{args.latent_size}-{args.encoder_width}-{args.decoder_width}-{args.class_pred_weight}-{args.total_masked_weight}'
+    if args.vae:
+        vae_name = f'VariationalAutoEncoderBeta-{args.beta}'
+    else:
+        vae_name = 'autoencoder'
+    run_name = f'{args.dataset}/{args.time}-{vae_name}-{args.latent_size}-{args.encoder_width}-{args.decoder_width}-{args.class_pred_weight}-{args.total_masked_weight}'
     if args.resume:
         run_name = f'{args.resume}'
 
@@ -172,12 +193,18 @@ def main():
 
     model.to(device)
     optimizer = optim.Adam(model.parameters(), lr=1e-3)
+    Scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer,
+                                                     patience=args.reduce_lr_patience,
+                                                     verbose=True,
+                                                     min_lr=1e-6)
     if os.path.isfile(model_name):
         optimizer.load_state_dict(model_dict_updt['optimizer_state_dict'])
+        epoch_start = model_dict_updt['epoch']
     else:
         model_dict_updt={'model_state_dict': [],
                          'TrainingLoss': [],
                          }
+        epoch_start=0
 
 
     def run(net, loader, optimizer, train=False, epoch=0):
@@ -213,7 +240,8 @@ def main():
             x = x.to(device)
             batch_len = x.shape[0]
 
-            predicted_set, (target_repr, latent_repr) = net(x, x, (x[:, 0] > 0).float())
+            mask = (x[:, 0] > 0).float()
+            predicted_set, (latent_mu, latent_var) = net(x, x, mask)
             vpred, cpred = predicted_set
             v_true = x[:, 1:, :]
             c_true = x[:, 0, :]
@@ -221,7 +249,13 @@ def main():
             chamfer_loss, mse_loss = MyChamfer(vpred, cpred, v_true, c_true, args)
             chamfer_loss_summed = torch.sum(chamfer_loss)
             mse_loss_summed = torch.sum(mse_loss)
-            total_loss = chamfer_loss_summed + mse_loss_summed
+
+            kld_loss = -0.5 * torch.sum(1 + latent_var - latent_mu ** 2 - latent_var.exp(), dim = 1)
+            kld_loss_summed = torch.sum(kld_loss)
+            if args.vae:
+                total_loss = (1 - args.beta) * (chamfer_loss_summed + mse_loss_summed) + args.beta * (kld_loss_summed)
+            else:
+                total_loss = chamfer_loss_summed + mse_loss_summed
             epoch_loss += total_loss
             total_len += batch_len
 
@@ -232,22 +266,34 @@ def main():
                 writer.add_scalar('metric/train-total-loss', total_loss.item() / batch_len, i_batch)
                 writer.add_scalar('metric/train-chamfer-loss', chamfer_loss_summed.item() / batch_len, i_batch)
                 writer.add_scalar('metric/train-mse-loss', mse_loss_summed.item() / batch_len / args.total_masked_weight, i_batch)
+                if args.vae:
+                    writer.add_scalar('metric/train-KLD-loss', kld_loss_summed.item() / batch_len, i_batch)
 
             # Plot predictions in Tensorboard
             if args.show and not train:
                 label = list([l for l in label])
                 embedding_labels += label
-                latent_repr = latent_repr.detach().cpu().numpy()
+                latent_mu = latent_mu.detach().cpu().numpy()
 
                 if isinstance(embedding_matrix, int):
-                    embedding_matrix = latent_repr
-                    loss_matrix = (chamfer_loss+mse_loss).detach().cpu().numpy()
+                    embedding_matrix = latent_mu
+                    if args.vae:
+                        recon_loss = chamfer_loss+mse_loss.detach().cpu().numpy()
+                        kl_loss = kld_loss.detach().cpu().numpy()
+                        loss_matrix_i = ((1 - args.beta) * recon_loss + args.beta * kl_loss)
+                        loss_matrix = loss_matrix_i
+                    else:
+                        loss_matrix = (chamfer_loss+mse_loss).detach().cpu().numpy()
                 else:
-                    embedding_matrix = np.vstack([embedding_matrix, latent_repr])
-                    loss_matrix = np.hstack([loss_matrix, (chamfer_loss+mse_loss).detach().cpu().numpy()])
+                    embedding_matrix = np.vstack([embedding_matrix, latent_mu])
+                    if args.vae:
+                        recon_loss = chamfer_loss+mse_loss.detach().cpu().numpy()
+                        kl_loss = kld_loss.detach().cpu().numpy()
+                        loss_matrix_i = ((1 - args.beta) * recon_loss + args.beta * kl_loss)
+                        loss_matrix = np.hstack([loss_matrix, loss_matrix_i])
+                    else:
+                        loss_matrix = np.hstack([loss_matrix, (chamfer_loss+mse_loss).detach().cpu().numpy()])
                 if embedding_matrix.shape[0] >= args.show_number:
-                    # print(f'length of data {embedding_matrix.shape}')
-                    # print(f'length of labels {len(embedding_labels)}')
                     writer.add_embedding(mat=embedding_matrix,
                                          global_step=epoch,
                                          metadata=embedding_labels
@@ -255,6 +301,7 @@ def main():
                     writer.add_histogram(tag='TotalLoss', values=loss_matrix, global_step=epoch)
                     return 0
         loader.set_postfix(loss=f'{total_loss.item() / batch_len:.2f}')
+        return  epoch_loss / total_len
 
 
 
@@ -265,12 +312,16 @@ def main():
 
     torch.backends.cudnn.benchmark = True
 
+    min_loss = np.inf
+    stopping_patience = args.stop_patience
+
     for epoch in range(args.epochs):
         if (epoch == 0) and (not args.train_only) and (not args.eval_only):
             with torch.no_grad():
                 run(model, background_eval, optimizer, train=False, epoch=-1)
         if not args.eval_only:
-            run(model, background_loader, optimizer, train=True, epoch=epoch)
+            total_loss = run(model, background_loader, optimizer, train=True, epoch=epoch)
+            Scheduler.step(total_loss)
 
         results = {
             'name': args.time if not args.resume else args.resume,
@@ -278,6 +329,7 @@ def main():
             'optimizer_state_dict': optimizer.state_dict(),
             'args': vars(args),
             'hash': git_hash,
+            'epoch': epoch
         }
         torch.save(results, os.path.join(model_dir,
                                          'logs',
@@ -287,6 +339,16 @@ def main():
         if not args.train_only:
             run(model, background_eval, optimizer, train=False, epoch=epoch)
         if args.eval_only:
+            break
+
+        if total_loss < min_loss:
+            min_loss = total_loss
+            stopping_patience = args.stop_patience
+        else:
+            stopping_patience -= 1
+
+        if stopping_patience == 0:
+            print(f'Model has not improved in {args.stop_patience} epochs...stopping early')
             break
 
 if __name__ == '__main__':
