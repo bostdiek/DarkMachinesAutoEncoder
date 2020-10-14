@@ -20,16 +20,27 @@ def make_model_with_FSPoool(arg_dict):
     latent_size = arg_dict.latent_size + 1
     decoder_width = arg_dict.decoder_width
 
-    encoder = FSEncoderSized(input_channels=5,  # (particle_id, e, pt, eta, phi)
-                             dim=encoder_width,
-                             output_channels=latent_size)
+    if arg_dict.vae:
+        encoder = FSEncoderSizedVAE(input_channels=5,  # (particle_id, e, pt, eta, phi)
+                                    dim=encoder_width,
+                                    output_channels=latent_size)
+    else:
+        encoder = FSEncoderSized(input_channels=5,  # (particle_id, e, pt, eta, phi)
+                                 dim=encoder_width,
+                                 output_channels=latent_size)
     decoder = MLPDecoder(input_channels=latent_size,
                          dim=decoder_width,
                          output_channels=4,     # four momentum
                          set_size=20,           # maximum of 20 particles
                          particle_types=9       # number of classes for classifier
                          )
-    return(Net(set_encoder=encoder, set_decoder=decoder))
+
+    if arg_dict.vae:
+        net = VAE(set_encoder=encoder, set_decoder=decoder)
+    else:
+        net = Net(set_encoder=encoder, set_decoder=decoder)
+
+    return net
 
 
 class Net(nn.Module):
@@ -70,6 +81,34 @@ class Net(nn.Module):
 
         return predicted_set, (target_repr, latent_repr)
 
+class VAE(nn.Module):
+    def __init__(self, set_encoder, set_decoder):
+        """
+        TODO:
+        """
+        super().__init__()
+        self.set_encoder = set_encoder
+        self.set_decoder = set_decoder
+
+        for m in self.modules():
+            if (
+                isinstance(m, nn.Linear)
+                or isinstance(m, nn.Conv2d)
+                or isinstance(m, nn.Conv1d)
+            ):
+                torch.nn.init.xavier_uniform_(m.weight)
+                if m.bias is not None:
+                    m.bias.data.zero_()
+
+    def forward(self, input, target_set, target_mask):
+        latent_mu, latent_var, mask_info = self.set_encoder(target_set, target_mask)
+        std = torch.exp(0.5 * latent_var)
+        z = latent_mu + torch.randn_like(std) * std
+
+        predicted_set = self.set_decoder(torch.cat([z, mask_info], dim=1))
+
+        return predicted_set, (latent_mu, latent_var)
+
 
 class FSEncoderSized(nn.Module):
     """ FSEncoder, but one feature in representation is forced to contain info about sum of masks """
@@ -97,6 +136,40 @@ class FSEncoderSized(nn.Module):
         # include mask information in representation
         x = torch.cat([x, mask.mean(dim=2) * 4], dim=1)
         return x
+
+
+class FSEncoderSizedVAE(nn.Module):
+    """
+    FSEncoder, but one feature in representation is forced to contain info about sum of masks
+    The output to the latent space contains two elements, the mean and the standard deviation
+    """
+
+    def __init__(self, input_channels, output_channels, dim):
+        super().__init__()
+        self.output_channels = output_channels
+        self.conv = nn.Sequential(
+            nn.Conv1d(input_channels, dim, 1),
+            nn.ReLU(),
+            nn.Conv1d(dim, dim, 1),
+            nn.ReLU(),
+            nn.Conv1d(dim, dim, 1),
+            nn.ReLU(),
+            nn.Conv1d(dim, (output_channels - 1) * 2, 1),
+        )
+        self.pool = FSPool((output_channels - 1) * 2, 20, relaxed=False)
+
+    def forward(self, x, mask=None):
+        mask = mask.unsqueeze(1)
+
+        x = self.conv(x)
+        x = x * mask  # mask invalid elements away
+        x, _ = self.pool(x)
+        # mean and variation
+        lat = x.view(-1, (self.output_channels - 1), 2)
+        latent_mu, latent_var = lat[:, :, 0], lat[:, :, 1]
+        # include mask information in representation
+        mask_info = mask.mean(dim=2).view(-1,1)
+        return [latent_mu, latent_var, mask_info]
 
 
 class MLPDecoder(nn.Module):
