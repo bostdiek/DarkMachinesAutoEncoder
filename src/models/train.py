@@ -315,7 +315,7 @@ def main():
     min_loss = np.inf
     stopping_patience = args.stop_patience
 
-    for epoch in range(args.epochs):
+    for epoch in range(epoch_start+1, args.epochs):
         if (epoch == 0) and (not args.train_only) and (not args.eval_only):
             with torch.no_grad():
                 run(model, background_eval, optimizer, train=False, epoch=-1)
