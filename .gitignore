@@ -8,3 +8,8 @@ model/logs/
 src/models/runs/
 src/scripts/logs/
 __pycache__/
+*.sh
+notebooks/mnist*
+notebooks/runs*
+runs/
+*.yml
