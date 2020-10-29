@@ -335,6 +335,22 @@ def main():
                                          )
                     writer.add_histogram(tag='TotalLoss', values=loss_matrix, global_step=epoch)
                     return 0
+            if (args.dataset == 'chan3') and (i_batch % 10 == 0):
+                results = {
+                    'name': args.time if not args.resume else args.resume,
+                    'weights': net.module.state_dict(),
+                    'optimizer_state_dict': optimizer.state_dict(),
+                    'args': vars(args),
+                    'hash': git_hash,
+                    'epoch': epoch
+                }
+                torch.save(results, os.path.join(model_dir,
+                                                 'logs',
+                                                 f'{run_name}.tar'
+                                                 )
+                          )
+            torch.cuda.empty_cache()
+
         loader.set_postfix(loss=f'{total_loss.item() / batch_len:.2f}')
         return  epoch_loss / total_len
 
