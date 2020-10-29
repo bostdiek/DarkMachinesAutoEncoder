@@ -47,6 +47,14 @@ class TrainingDataset(Dataset):
             return sample.float(), self.types[idx]
         return sample.float()
 
+@torch.jit.script
+def my_cdist(x1, x2):
+    x1_norm = x1.pow(2).sum(dim=-1, keepdim=True)
+    x2_norm = x2.pow(2).sum(dim=-1, keepdim=True)
+    res = torch.addmm(x2_norm.transpose(-2, -1), x1, x2.transpose(-2, -1), alpha=-2).add_(x1_norm)
+    res = res.clamp_min_(1e-30).sqrt_()
+    return res
+
 def ChamferLossWithClassifierAndCount(vpred, cpred, v_true, c_true, loss_args):
     """
     Computes the loss between the input set and the output set
@@ -78,7 +86,7 @@ def ChamferLossWithClassifierAndCount(vpred, cpred, v_true, c_true, loss_args):
         CTRUE = c_true[i]
 
 
-        dist = torch.cdist(VPRED, VTRUE[CTRUE > 0])
+        dist = my_cdist(VPRED, VTRUE[CTRUE > 0])
         # distance for each true vector to nearest predicted vector
         d1, ind1 = torch.min(dist, 0)
         inds = CTRUE[CTRUE>0].long()
