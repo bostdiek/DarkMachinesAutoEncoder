@@ -206,11 +206,12 @@ def main():
                                    shuffle=True,
                                    num_workers=args.num_workers
                                    )
-    background_eval = DataLoader(Background_eval,
-                                 batch_size=args.batch_size,
-                                 shuffle=False,
-                                 num_workers=args.num_workers
-                                 )
+    if not args.train_only:
+        background_eval = DataLoader(Background_eval,
+                                     batch_size=args.batch_size,
+                                     shuffle=False,
+                                     num_workers=args.num_workers
+                                     )
 
     model = make_model_with_FSPoool(args)
 
