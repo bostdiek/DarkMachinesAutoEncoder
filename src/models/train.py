@@ -147,13 +147,47 @@ def main():
                                               final_frac=0.9)
     elif args.dataset == 'chan2a':
         print(f'Experiment on {args.dataset}')
-        Background = TrainingDataset(ddir +  'interim/chan2a/background_chan2a_309.6.npz')
+        ffile = ddir +  'interim/chan2a/background_chan2a_309.6.npz'
+        subprocess.call(f'rsync -v --progress {ffile} /scratch/background_chan2a_309.6.npz',
+                        shell=True
+                        )
+        Background = TrainingDataset('/scratch/background_chan2a_309.6.npz',
+                                     init_frac=0,
+                                     final_frac=0.8)
+        if not args.train_only:
+            Background_eval = TrainingDataset('/scratch/background_chan2a_309.6.npz',
+                                              types=True,
+                                              init_frac=0.8,
+                                              final_frac=0.9)
+
     elif args.dataset == 'chan2b':
         print(f'Experiment on {args.dataset}')
-        Background = TrainingDataset(ddir +  'interim/chan2b/background_chan2b_7.8.npz')
-    elif args.dataset == 'chan2':
+        ffile = ddir +  'interim/chan2b/background_chan2b_7.8.npz'
+        subprocess.call(f'rsync -v --progress {ffile} /scratch/background_chan2b_7.8.npz',
+                        shell=True
+                        )
+        Background = TrainingDataset('/scratch/background_chan2b_7.8.npz',
+                                     init_frac=0,
+                                     final_frac=0.8)
+        if not args.train_only:
+            Background_eval = TrainingDataset('/scratch/background_chan2b_7.8.npz',
+                                              types=True,
+                                              init_frac=0.8,
+                                              final_frac=0.9)
+    elif args.dataset == 'chan3':
         print(f'Experiment on {args.dataset}')
-        Background = TrainingDataset(ddir +  'interim/chan3/background_chan3_8.02.npz')
+        ffile = ddir +  'interim/chan3/background_chan3_8.02.npz'
+        subprocess.call(f'rsync -v --progress {ffile} /scratch/background_chan3_8.02.npz',
+                        shell=True
+                        )
+        Background = TrainingDataset('/scratch/background_chan3_8.02.npz',
+                                     init_frac=0,
+                                     final_frac=0.8)
+        if not args.train_only:
+            Background_eval = TrainingDataset('/scratch/background_chan3_8.02.npz',
+                                              types=True,
+                                              init_frac=0.8,
+                                              final_frac=0.9)
     else:
         sys.exit('Bad dataset')
 
