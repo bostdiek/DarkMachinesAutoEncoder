@@ -83,19 +83,35 @@ def main():
     if dataset == 'chan1':
         print(f'Experiment on {dataset}')
         ffile = ddir +  'interim/chan1/*.npz'
+        if not os.path.isdir(f'/scratch/bostdiek/{dataset}'):
+            os.makedirs(f'/scratch/bostdiek/{dataset}')
         subprocess.call(f'rsync -v --progress {ffile} /scratch/bostdiek/{dataset}',
                         shell=True
                         )
 
     elif dataset == 'chan2a':
         print(f'Experiment on {dataset}')
-        Background = TrainingDataset(ddir +  f'interim/chan2a/{dataset}/background_chan2a_309.6.npz')
+        ffile = ddir +  'interim/chan2a/*.npz'
+        if not os.path.isdir(f'/scratch/bostdiek/{dataset}'):
+            os.makedirs(f'/scratch/bostdiek/{dataset}')
+        subprocess.call(f'rsync -v --progress {ffile} /scratch/bostdiek/{dataset}',
+                        shell=True
+                        )
     elif dataset == 'chan2b':
         print(f'Experiment on {dataset}')
-        Background = TrainingDataset(ddir +  f'interim/chan2b/{dataset}/background_chan2b_7.8.npz')
-    elif dataset == 'chan2':
-        print(f'Experiment on {dataset}')
-        Background = TrainingDataset(ddir +  f'interim/chan3/{dataset}/background_chan3_8.02.npz')
+        ffile = ddir +  'interim/chan2b/*.npz'
+        if not os.path.isdir(f'/scratch/bostdiek/{dataset}'):
+            os.makedirs(f'/scratch/bostdiek/{dataset}')
+        subprocess.call(f'rsync -v --progress {ffile} /scratch/bostdiek/{dataset}',
+                        shell=True
+                        )
+    elif dataset == 'chan3':
+        ffile = ddir +  'interim/chan3/*.npz'
+        if not os.path.isdir(f'/scratch/bostdiek/{dataset}'):
+            os.makedirs(f'/scratch/bostdiek/{dataset}')
+        subprocess.call(f'rsync -v --progress {ffile} /scratch/bostdiek/{dataset}',
+                        shell=True
+                        )
     else:
         sys.exit('Bad dataset')
 
@@ -169,7 +185,7 @@ def main():
         return  loss_matrix, latent_matrix, embedding_labels
     # End of the Run function
 
-    datafiles = os.f'/scratch/bostdiek/{dataset}')
+    datafiles = os.listdir(f'/scratch/bostdiek/{dataset}')
     print(datafiles)
     torch.backends.cudnn.benchmark = True
 
