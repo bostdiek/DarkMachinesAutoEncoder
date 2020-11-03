@@ -3,13 +3,15 @@ import numpy as np
 import time
 import os
 
-channels = ['chan3', 'chan2a', 'chan2b']
+channels = ['chan3']
 
 for c in channels:
     files = os.listdir(f'/n/home02/bostdiek/DarkMachines/model/logs/{c}/')
     print(files)
 
     for f in files:
+        if '2020-10-30-' not in f:
+            continue
         fname = f'/n/home02/bostdiek/DarkMachines/src/scripts/bash_slurm/{c}_{f[:-4]}.sh'
         print(fname)
         with open(fname, 'w') as fout:
