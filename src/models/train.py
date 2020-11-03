@@ -204,13 +204,15 @@ def main():
     background_loader = DataLoader(Background,
                                    batch_size=args.batch_size,
                                    shuffle=True,
-                                   num_workers=args.num_workers
+                                   num_workers=args.num_workers,
+                                   pin_memory=True
                                    )
     if not args.train_only:
         background_eval = DataLoader(Background_eval,
                                      batch_size=args.batch_size,
                                      shuffle=False,
-                                     num_workers=args.num_workers
+                                     num_workers=args.num_workers,
+                                     pin_memory=True
                                      )
 
     model = make_model_with_FSPoool(args)
@@ -291,7 +293,7 @@ def main():
                 total_loss = (1 - args.beta) * (chamfer_loss_summed + mse_loss_summed) + args.beta * (kld_loss_summed)
             else:
                 total_loss = chamfer_loss_summed + mse_loss_summed
-            epoch_loss += total_loss
+            epoch_loss += total_loss.item()
             total_len += batch_len
 
             if train:
