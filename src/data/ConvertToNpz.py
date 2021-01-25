@@ -35,9 +35,11 @@ with open(args.file_in) as f:
 
         for j, obj in enumerate(line[5:-1]):
             j=j+1
+            if j == 20:break
             obj = obj.split(',')
 #             print(obj)
             obj, e, pt, eta, phi = obj
+            obj=obj.replace('mu', 'm')
             obj_convert = {'j': 1, 'b':2, 'e-': 3, 'e+': 4, 'm-':5, 'm+':6, 'g': 7}
             reconstructed_objects[i, j*5] = obj_convert[obj]
             reconstructed_objects[i, j*5 + 1] = float(e)
