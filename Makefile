@@ -1,4 +1,5 @@
-objects = data/raw/training_files.tar
+objects = data/raw/training_files.tar \
+		  data/raw/secret_data.tar
 
 chan1 = data/interim/chan1/background_chan1_7.79.csv \
 		data/interim/chan1/glgl1400_neutralino1100_chan1.csv\
@@ -9,6 +10,7 @@ chan1 = data/interim/chan1/background_chan1_7.79.csv \
 		data/interim/chan1/sqsq1_sq1400_neut800_chan1.csv\
 		data/interim/chan1/stlp_st1000_chan1.csv\
 		data/interim/chan1/stop2b1000_neutralino300_chan1.csv\
+		data/interim/chan1/unlabeled_combined_chan1.csv\
 
 chan2a = data/interim/chan2a/background_chan2a_309.6.csv\
          data/interim/chan2a/chaneut_cha200_neut50_chan2a.csv\
@@ -17,7 +19,8 @@ chan2a = data/interim/chan2a/background_chan2a_309.6.csv\
 		 data/interim/chan2a/chaneut_cha400_neut200_chan2a.csv\
 		 data/interim/chan2a/gluino_1000.0_neutralino_1.0_chan2a.csv\
 		 data/interim/chan2a/pp23mt_50_chan2a.csv\
-		 data/interim/chan2a/pp24mt_50_chan2a.csv
+		 data/interim/chan2a/pp24mt_50_chan2a.csv\
+		 data/interim/chan2a/unlabeled_combined_chan2a.csv
 
 chan2b = data/interim/chan2b/background_chan2b_7.8.csv\
 		 data/interim/chan2b/chacha_cha300_neut140_chan2b.csv\
@@ -28,7 +31,8 @@ chan2b = data/interim/chan2b/background_chan2b_7.8.csv\
 		 data/interim/chan2b/gluino_1000.0_neutralino_1.0_chan2b.csv\
 		 data/interim/chan2b/pp23mt_50_chan2b.csv\
 		 data/interim/chan2b/pp24mt_50_chan2b.csv\
-		 data/interim/chan2b/stlp_st1000_chan2b.csv
+		 data/interim/chan2b/stlp_st1000_chan2b.csv\
+		 data/interim/chan2b/unlabeled_combined_chan2b.csv
 
 chan3 = data/interim/chan3/background_chan3_8.02.csv\
  		data/interim/chan3/glgl1400_neutralino1100_chan3.csv\
@@ -40,7 +44,8 @@ chan3 = data/interim/chan3/background_chan3_8.02.csv\
 		data/interim/chan3/sqsq_sq1800_neut800_chan3.csv\
 		data/interim/chan3/sqsq1_sq1400_neut800_chan3.csv\
 		data/interim/chan3/stlp_st1000_chan3.csv\
-		data/interim/chan3/stop2b1000_neutralino300_chan3.csv
+		data/interim/chan3/stop2b1000_neutralino300_chan3.csv\
+		data/interim/chan3/unlabeled_combined_chan3.csv
 
 chan1npz = $(addprefix data/interim/chan1/, $(addsuffix .npz, $(basename $(notdir $(chan1)))))
 chan2anpz = $(addprefix data/interim/chan2a/, $(addsuffix .npz, $(basename $(notdir $(chan2a)))))
