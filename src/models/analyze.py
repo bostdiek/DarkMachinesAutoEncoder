@@ -177,7 +177,7 @@ def main():
             else:
                 total_loss = chamfer_loss + mse_loss
 
-            loss_matrix[(i_batch * batch_len):(i_batch * batch_len) + batch_len] = total_loss
+            loss_matrix[(i_batch * args.batch_size):(i_batch * args.batch_size) + batch_len] = total_loss
 
             label = list([l for l in label])
             embedding_labels += label
@@ -207,7 +207,7 @@ def main():
 
         loss_matrix, latent_matrix, embedding_labels = run(model, data_loader)
 
-        tmp_dict['loss_matrix'] = tmp_dict['loss_matrix'] = loss_matrix.detach().cpu().numpy()[:len(embedding_labels)]
+        tmp_dict['loss_matrix'] = loss_matrix.detach().cpu().numpy()[:len(embedding_labels)]
         tmp_dict['latent_matrix'] = latent_matrix.detach().cpu().numpy()[:len(embedding_labels)]
         tmp_dict['embedding_labels'] = embedding_labels
         results_dict[datafile] = tmp_dict
